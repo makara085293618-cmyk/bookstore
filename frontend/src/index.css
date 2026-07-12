@@ -170,3 +170,48 @@ a:hover { text-decoration: underline; }
 }
 
 .empty-state { text-align: center; color: var(--ink-soft); padding: 3rem 0; }
+
+.admin-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+/* =========================================================
+   Mobile Responsive (អេក្រង់ទូលាយតិចជាង 640px ដូចជា mobile phone)
+   ========================================================= */
+@media (max-width: 640px) {
+  .navbar {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.8rem 1rem;
+    gap: 0.6rem;
+  }
+  .navbar .brand { font-size: 1.15rem; }
+  .navbar nav {
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    width: 100%;
+    font-size: 0.9rem;
+  }
+
+  .container { padding: 1rem; }
+  .page-title { font-size: 1.4rem; }
+
+  /* កាតសៀវភៅ តូចជាងមុនបន្តិច ដើម្បីមាន ២ column លើ mobile */
+  .book-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 0.8rem;
+  }
+  .book-card .info { padding: 0.6rem; gap: 0.15rem; }
+  .book-card .title { font-size: 0.85rem; }
+  .book-card .author { font-size: 0.75rem; }
+  .book-card .price { font-size: 0.9rem; }
+  .book-card .btn { padding: 0.45rem 0.6rem; font-size: 0.75rem; width: 100%; }
+
+  .form-box { margin: 1rem auto; padding: 1.2rem; max-width: 100%; }
+
+  .cart-row { flex-wrap: wrap; gap: 0.6rem; }
+  .cart-row img { width: 45px; height: 64px; }
+
+  /* Admin table លិចក្រៅអេក្រង់តូច -> ធ្វើឲ្យ scroll ដោយឡែក */
+  table { display: block; overflow-x: auto; white-space: nowrap; }
+
+  .admin-form-grid { grid-template-columns: 1fr; }
+}

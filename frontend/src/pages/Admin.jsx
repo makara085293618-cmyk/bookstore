@@ -97,7 +97,7 @@ export default function Admin() {
       <form onSubmit={handleSubmit} style={{ background: 'white', border: '1px solid var(--line)', borderRadius: 'var(--radius)', padding: '1.5rem', marginBottom: '2rem' }}>
         <h3 style={{ marginTop: 0 }}>{editingId ? `កែសម្រួលសៀវភៅ #${editingId}` : 'បន្ថែមសៀវភៅថ្មី'}</h3>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className="admin-form-grid">
           <div className="field">
             <label>ចំណងជើង</label>
             <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
