@@ -4,7 +4,15 @@ const { Pool } = require('pg');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+
+// កំណត់ CORS ឱ្យច្បាស់លាស់ដើម្បីបំបាត់ Error CORS policy
+app.use(cors({
+  origin: 'https://bookstore-frontend-tau-khaki.vercel.app',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // ភ្ជាប់ទៅកាន់ Neon PostgreSQL Database
