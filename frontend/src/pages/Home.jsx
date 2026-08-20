@@ -11,8 +11,6 @@ export default function Home() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
 
-  // ស្វែងរកម្តងទៀត រាល់ពេល search ឬ category ផ្លាស់ប្តូរ
-  // setTimeout ដាក់ delay បន្តិច (debounce) ដើម្បីកុំឲ្យហៅ API រាល់ពេលចុចអក្សរនីមួយៗ
   useEffect(() => {
     setLoading(true);
     const timer = setTimeout(() => {

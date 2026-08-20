@@ -3,7 +3,7 @@ import { getBooks, createBook, updateBook, deleteBook } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
 const emptyForm = {
-  title: '', author: '', description: '', price: '', stock: '', category: '', image_url: '',
+  title: '', author: '', description: '', price: '', stock: '', category: '', image_url: '', ebook_url: '',
 };
 
 export default function Admin() {
@@ -12,7 +12,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [form, setForm] = useState(emptyForm);
-  const [editingId, setEditingId] = useState(null); // null = កំពុងបន្ថែមថ្មី, មានលេខ = កំពុងកែ
+  const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
 
   async function loadBooks() {
@@ -38,6 +38,7 @@ export default function Admin() {
       stock: book.stock,
       category: book.category || '',
       image_url: book.image_url || '',
+      ebook_url: book.ebook_url || '',
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -77,7 +78,6 @@ export default function Admin() {
     }
   }
 
-  // ---------- ការពារទំព័រនេះ៖ តម្រូវឲ្យ login ជា admin ប៉ុណ្ណោះ ----------
   if (authLoading) return <div className="container"><p>កំពុងផ្ទុក...</p></div>;
   if (!user || user.role !== 'admin') {
     return (
@@ -93,7 +93,6 @@ export default function Admin() {
 
       {error && <div className="error-msg">{error}</div>}
 
-      {/* ---------- ទម្រង់បន្ថែម/កែ ---------- */}
       <form onSubmit={handleSubmit} style={{ background: 'white', border: '1px solid var(--line)', borderRadius: 'var(--radius)', padding: '1.5rem', marginBottom: '2rem' }}>
         <h3 style={{ marginTop: 0 }}>{editingId ? `កែសម្រួលសៀវភៅ #${editingId}` : 'បន្ថែមសៀវភៅថ្មី'}</h3>
 
@@ -115,14 +114,20 @@ export default function Admin() {
             <input type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} required />
           </div>
           <div className="field">
-            <label>ប្រភេទ</label>
+            <label>ប្រភេទ (Fiction, Programming, History, Cooking)</label>
             <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
           </div>
           <div className="field">
-            <label>URL រូបភាព</label>
+            <label>URL រូបភាព (គម្រប)</label>
             <input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
           </div>
         </div>
+
+        <div className="field">
+          <label>🔒 URL Ebook (link ទាញយក — លាក់កំបាំង, បង្ហាញឲ្យតែអ្នកទិញរួច)</label>
+          <input value={form.ebook_url} onChange={(e) => setForm({ ...form, ebook_url: e.target.value })} placeholder="https://example.com/mybook.pdf" />
+        </div>
+
         <div className="field">
           <label>ការពិពណ៌នា</label>
           <textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
@@ -138,7 +143,6 @@ export default function Admin() {
         </div>
       </form>
 
-      {/* ---------- តារាងសៀវភៅ ---------- */}
       {loading ? (
         <p>កំពុងផ្ទុក...</p>
       ) : (

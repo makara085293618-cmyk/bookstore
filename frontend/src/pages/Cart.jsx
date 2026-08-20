@@ -20,7 +20,7 @@ export default function Cart() {
     try {
       const order = await checkout();
       await refreshCart();
-      navigate('/', { state: { orderConfirmed: order.id } });
+      navigate('/orders');
       alert(`បានកម្មង់ទិញជោគជ័យ! លេខកម្មង់ #${order.id} សរុប $${order.total}`);
     } catch (err) {
       setError(err.message);

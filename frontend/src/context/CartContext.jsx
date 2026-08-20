@@ -1,8 +1,3 @@
-/**
- * context/CartContext.jsx
- * ================================
- * រក្សាទុកទិន្នន័យកន្ត្រក ដើម្បីឲ្យ Navbar (លេខរាប់) និង Cart page ប្រើរួមគ្នា
- */
 import { createContext, useContext, useState, useCallback } from 'react';
 import { getCart, addToCart as apiAddToCart, updateCartItem, removeCartItem } from '../api/client';
 import { useAuth } from './AuthContext';

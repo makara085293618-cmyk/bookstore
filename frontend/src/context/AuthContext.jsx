@@ -1,9 +1,3 @@
-/**
- * context/AuthContext.jsx
- * ================================
- * រក្សាទុកព័ត៌មាន "តើនរណា login នៅ" សម្រាប់ទាំង App
- * ដូច្នេះទំព័រណាមួយក៏អាចដឹងបាន (Navbar បង្ហាញឈ្មោះ, Cart ដឹងថាត្រូវ login សិន ។ល។)
- */
 import { createContext, useContext, useState, useEffect } from 'react';
 import { loginUser, registerUser, getCurrentUser } from '../api/client';
 
@@ -13,7 +7,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ពេលបើក app ដំបូង ពិនិត្យមើលថាមាន token ចាស់ (localStorage) ដែរឬទេ
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
