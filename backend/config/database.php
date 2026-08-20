@@ -1,18 +1,5 @@
 <?php
-/**
- * Database connection (PostgreSQL via PDO)
- * ការភ្ជាប់ទិន្នន័យ - យើងប្រើ PDO ព្រោះវាមានសុវត្ថិភាព (prepared statements)
- *
- * We read credentials from environment variables so the SAME code works:
- *  - on your local machine (.env loaded manually or via a tool like phpdotenv)
- *  - on Render / Railway (set these in their dashboard "Environment" tab)
- *
- * Required env vars:
- *   DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
- */
-
 function getDbConnection(): PDO {
-    // Support either individual vars OR a single DATABASE_URL (common on Render/Railway)
     $databaseUrl = getenv('DATABASE_URL');
 
     if ($databaseUrl) {
