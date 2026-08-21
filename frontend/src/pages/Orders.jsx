@@ -18,6 +18,7 @@ export default function Orders() {
     const fetchOrders = async () => {
       try {
         const token = localStorage.getItem("token");
+        console.log("🔑 Token:", token);
         const response = await fetch(
           "https://bookstore-kybd.onrender.com/api/orders",
           {
@@ -28,11 +29,14 @@ export default function Orders() {
           }
         );
 
+        console.log("📡 Response status:", response.status);
+
         if (!response.ok) {
           throw new Error("Failed to fetch orders");
         }
 
         const data = await response.json();
+        console.log("📦 Orders data:", data);
         setOrders(data);
       } catch (err) {
         setError(err.message);
