@@ -7,7 +7,11 @@ const app = express();
 
 // កំណត់ CORS ឱ្យច្បាស់លាស់ដើម្បីបំបាត់ Error CORS policy
 app.use(cors({
-  origin: 'https://bookstore-frontend-tau-khaki.vercel.app',
+  origin: [
+    'http://localhost:5173', 
+    'https://bookstore-frontend-tau-khaki.vercel.app', 
+    'https://amplifyapp.com' // Added your AWS Amplify link
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
