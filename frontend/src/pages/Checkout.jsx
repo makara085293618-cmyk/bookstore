@@ -25,9 +25,9 @@ function CheckoutForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [clientSecret, setClientSecret] = useState("");
+  const [postalCode, setPostalCode] = useState(""); // 👈 បន្ថែម Postal Code
 
   useEffect(() => {
-    // បង្កើត Payment Intent
     const createPaymentIntent = async () => {
       try {
         const token = localStorage.getItem("token");
@@ -59,6 +59,12 @@ function CheckoutForm() {
     e.preventDefault();
     if (!stripe || !elements || !clientSecret) return;
 
+    // 👇 ពិនិត្យ Postal Code
+    if (!postalCode || postalCode.length < 3) {
+      setError("សូមបញ្ចូលលេខកូដប្រៃសណីយ៍");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -66,6 +72,11 @@ function CheckoutForm() {
       await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement),
+          billing_details: {
+            address: {
+              postal_code: postalCode, // 👈 បញ្ចូល Postal Code
+            },
+          },
         },
       });
 
@@ -163,6 +174,33 @@ function CheckoutForm() {
                 }}
               />
             </div>
+          </div>
+
+          {/* 👇 បន្ថែម Postal Code Input */}
+          <div style={{ marginBottom: "20px" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "5px",
+                fontWeight: "600",
+              }}
+            >
+              លេខកូដប្រៃសណីយ៍ (Postal Code)
+            </label>
+            <input
+              type="text"
+              placeholder="12345"
+              value={postalCode}
+              onChange={e => setPostalCode(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "10px 15px",
+                border: "1px solid #ddd",
+                borderRadius: "4px",
+                fontSize: "16px",
+              }}
+              required
+            />
           </div>
 
           {error && <div className="error-msg">⚠️ {error}</div>}
