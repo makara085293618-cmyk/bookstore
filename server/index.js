@@ -454,13 +454,43 @@ app.post(
 );
 
 // API សម្រាប់បង្កើត Order
-app.post("/api/orders", async (req, res) => {
+// API សម្រាប់បង្កើត Order (ត្រូវការ Token)
+app.post("/api/orders", authenticateToken, async (req, res) => {
   try {
-    const { user_id, total_amount } = req.body;
+    const user_id = req.user.id;
+    const { total_amount, items } = req.body;
+
+    // ពិនិត្យមើលថាមានទិន្នន័យ
+    if (!total_amount || !items || items.length === 0) {
+      return res.status(400).json({ error: "Invalid order data" });
+    }
+
+    // បង្កើត Order
     const newOrder = await pool.query(
-      "INSERT INTO orders (user_id, total_amount) VALUES ($1, $2) RETURNING *",
+      `INSERT INTO orders (user_id, total_amount, status) 
+       VALUES ($1, $2, 'pending') 
+       RETURNING *`,
       [user_id, total_amount]
     );
+
+    // បន្ថែម Order Items
+    for (const item of items) {
+      await pool.query(
+        `INSERT INTO order_items (order_id, book_id, quantity, price) 
+         VALUES ($1, $2, $3, $4)`,
+        [newOrder.rows[0].id, item.book_id, item.quantity, item.price]
+      );
+
+      // បន្ថយ Stock
+      await pool.query(`UPDATE books SET stock = stock - $1 WHERE id = $2`, [
+        item.quantity,
+        item.book_id,
+      ]);
+    }
+
+    // លុប Cart
+    await pool.query("DELETE FROM cart WHERE user_id = $1", [user_id]);
+
     res.json({
       message: "Order created successfully",
       order: newOrder.rows[0],
@@ -471,6 +501,65 @@ app.post("/api/orders", async (req, res) => {
   }
 });
 
+// មើល Orders របស់ខ្ញុំ (ត្រូវការ Token)
+app.get("/api/orders", authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user.id;
+
+    const orders = await pool.query(
+      `SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC`,
+      [user_id]
+    );
+
+    // យក Order Items នីមួយៗ
+    for (const order of orders.rows) {
+      const items = await pool.query(
+        `SELECT oi.*, b.title, b.image_url 
+         FROM order_items oi 
+         JOIN books b ON oi.book_id = b.id 
+         WHERE oi.order_id = $1`,
+        [order.id]
+      );
+      order.items = items.rows;
+    }
+
+    res.json(orders.rows);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Server Error" });
+  }
+});
+
+// មើល Order មួយ (ត្រូវការ Token)
+app.get("/api/orders/:id", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user_id = req.user.id;
+
+    const order = await pool.query(
+      `SELECT * FROM orders WHERE id = $1 AND user_id = $2`,
+      [id, user_id]
+    );
+
+    if (order.rows.length === 0) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    const items = await pool.query(
+      `SELECT oi.*, b.title, b.image_url 
+       FROM order_items oi 
+       JOIN books b ON oi.book_id = b.id 
+       WHERE oi.order_id = $1`,
+      [id]
+    );
+
+    order.rows[0].items = items.rows;
+    res.json(order.rows[0]);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Server Error" });
+  }
+});
 // ============================================
 // បន្ថែម API ថ្មីសម្រាប់ Update រូបភាព
 // ============================================
