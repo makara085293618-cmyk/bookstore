@@ -10,7 +10,7 @@ app.use(cors({
   origin: [
     'http://localhost:5173', 
     'https://bookstore-frontend-tau-khaki.vercel.app', 
-    'https://amplifyapp.com' // Added your AWS Amplify link
+    'https://main.d1cfahortjyjeh.amplifyapp.com' // ប្ដូរឲ្យត្រូវ
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
