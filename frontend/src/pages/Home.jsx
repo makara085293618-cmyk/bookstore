@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react';
-import { getBooks } from '../api/client';
-import BookCard from '../components/BookCard';
+import { useEffect, useState } from "react";
+import { getBooks } from "../api/client";
+import BookCard from "../components/BookCard";
 
-const CATEGORIES = ['Fiction', 'Programming', 'History', 'Cooking'];
+const CATEGORIES = ["Fiction", "Programming", "History", "Cooking"];
 
 export default function Home() {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('');
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
 
   useEffect(() => {
     setLoading(true);
@@ -19,8 +19,11 @@ export default function Home() {
       if (category) params.category = category;
 
       getBooks(params)
-        .then((data) => { setBooks(data); setError(''); })
-        .catch((err) => setError(err.message))
+        .then(data => {
+          setBooks(data);
+          setError("");
+        })
+        .catch(err => setError(err.message))
         .finally(() => setLoading(false));
     }, 300);
 
@@ -29,38 +32,51 @@ export default function Home() {
 
   return (
     <div className="container">
-      <h1 className="page-title">សៀវភៅទាំងអស់</h1>
+      <h1 className="page-title">📚 សៀវភៅទាំងអស់</h1>
       <p className="subtitle">រកឃើញសៀវភៅ {books.length} ក្បាល</p>
 
-      <div style={{ display: 'flex', gap: '0.8rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+      {/* Search & Filter - Mobile Responsive */}
+      <div className="search-filter-container">
         <input
           type="text"
           placeholder="ស្វែងរកតាមចំណងជើង ឬអ្នកនិពន្ធ..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ flex: 1, minWidth: '220px', padding: '0.6rem', border: '1px solid var(--line)', borderRadius: 'var(--radius)', fontFamily: 'inherit' }}
+          onChange={e => setSearch(e.target.value)}
+          className="search-input"
         />
         <select
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          style={{ padding: '0.6rem', border: '1px solid var(--line)', borderRadius: 'var(--radius)', fontFamily: 'inherit' }}
+          onChange={e => setCategory(e.target.value)}
+          className="filter-select"
         >
           <option value="">គ្រប់ប្រភេទ</option>
-          {CATEGORIES.map((cat) => (
-            <option key={cat} value={cat}>{cat}</option>
+          {CATEGORIES.map(cat => (
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
           ))}
         </select>
       </div>
 
-      {loading && <p>កំពុងស្វែងរក...</p>}
+      {/* Loading */}
+      {loading && (
+        <div className="loading-state">
+          <div className="spinner"></div>
+          <p>កំពុងស្វែងរក...</p>
+        </div>
+      )}
+
+      {/* Error */}
       {error && <div className="error-msg">{error}</div>}
 
+      {/* Empty State */}
       {!loading && books.length === 0 && (
         <div className="empty-state">រកមិនឃើញសៀវភៅត្រូវនឹងលក្ខខណ្ឌនេះទេ 🔍</div>
       )}
 
+      {/* Book Grid */}
       <div className="book-grid">
-        {books.map((book) => (
+        {books.map(book => (
           <BookCard key={book.id} book={book} />
         ))}
       </div>
