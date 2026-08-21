@@ -1,3 +1,4 @@
+// src/pages/Cart.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
@@ -5,8 +6,14 @@ import { useAuth } from "../context/AuthContext";
 import { checkout } from "../api/client";
 
 export default function Cart() {
-  const { items, total, refreshCart, changeQuantity, removeFromCart } =
-    useCart();
+  const {
+    items,
+    total,
+    refreshCart,
+    changeQuantity,
+    removeFromCart,
+    clearCart,
+  } = useCart();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState(false);
@@ -21,29 +28,41 @@ export default function Cart() {
     }
   }, [user]);
 
-  // មុខងារលុបជាមួយការពិនិត្យ
-  const handleRemove = async itemId => {
+  // ❌ មុខងារលុប (ប្រើ book_id)
+  const handleRemove = async bookId => {
     setError("");
     try {
-      await removeFromCart(itemId);
+      await removeFromCart(bookId);
       await refreshCart();
     } catch (err) {
       setError(err.message || "Failed to remove item");
     }
   };
 
-  // មុខងារធ្វើបច្ចុប្បន្នភាពបរិមាណ
-  const handleChangeQuantity = async (itemId, newQuantity) => {
+  // 🔄 មុខងារធ្វើបច្ចុប្បន្នភាពបរិមាណ (ប្រើ book_id)
+  const handleChangeQuantity = async (bookId, newQuantity) => {
     setError("");
     try {
-      await changeQuantity(itemId, newQuantity);
+      await changeQuantity(bookId, newQuantity);
       await refreshCart();
     } catch (err) {
       setError(err.message || "Failed to update quantity");
     }
   };
 
-  // មុខងារ Checkout
+  // 🗑️ លុបកន្ត្រកទាំងមូល
+  const handleClearCart = async () => {
+    if (!window.confirm("តើអ្នកប្រាកដថាចង់លុបកន្ត្រកទាំងមូល?")) {
+      return;
+    }
+    setError("");
+    const result = await clearCart();
+    if (!result.success) {
+      setError(result.error || "Failed to clear cart");
+    }
+  };
+
+  // 💳 មុខងារ Checkout
   async function handleCheckout() {
     setError("");
     setCheckingOut(true);
@@ -59,7 +78,7 @@ export default function Cart() {
     }
   }
 
-  // ប្រសិនបើមិនទាន់ Login
+  // 🔒 ប្រសិនបើមិនទាន់ Login
   if (!user) {
     return (
       <div className="container">
@@ -93,7 +112,7 @@ export default function Cart() {
     );
   }
 
-  // Loading State
+  // ⏳ Loading State
   if (loading) {
     return (
       <div className="container">
@@ -149,8 +168,9 @@ export default function Cart() {
                 <div className="item-quantity">
                   <button
                     className="qty-btn"
-                    onClick={() =>
-                      handleChangeQuantity(item.id, item.quantity - 1)
+                    onClick={
+                      () =>
+                        handleChangeQuantity(item.book_id, item.quantity - 1) // 👈 ប្រើ book_id
                     }
                     disabled={item.quantity <= 1}
                   >
@@ -159,8 +179,9 @@ export default function Cart() {
                   <span className="qty-number">{item.quantity}</span>
                   <button
                     className="qty-btn"
-                    onClick={() =>
-                      handleChangeQuantity(item.id, item.quantity + 1)
+                    onClick={
+                      () =>
+                        handleChangeQuantity(item.book_id, item.quantity + 1) // 👈 ប្រើ book_id
                     }
                     disabled={item.quantity >= (item.stock || 999)}
                   >
@@ -169,7 +190,7 @@ export default function Cart() {
                 </div>
                 <button
                   className="btn btn-danger"
-                  onClick={() => handleRemove(item.id)}
+                  onClick={() => handleRemove(item.book_id)} // 👈 ប្រើ book_id
                 >
                   🗑️ យកចេញ
                 </button>
@@ -189,23 +210,26 @@ export default function Cart() {
               <span>តម្លៃសរុប:</span>
               <span className="total-amount">${Number(total).toFixed(2)}</span>
             </div>
+            <div className="cart-actions">
+              <button
+                className="btn btn-success"
+                onClick={handleCheckout}
+                disabled={checkingOut}
+              >
+                {checkingOut ? (
+                  <>
+                    <span className="spinner-small"></span>
+                    កំពុងដំណើរការ...
+                  </>
+                ) : (
+                  "💳 ដាក់កម្មង់ទិញ"
+                )}
+              </button>
+              <button className="btn btn-danger" onClick={handleClearCart}>
+                🗑️ លុបកន្ត្រកទាំងមូល
+              </button>
+            </div>
           </div>
-
-          {/* Checkout Button */}
-          <button
-            className="btn btn-success btn-block checkout-btn"
-            onClick={handleCheckout}
-            disabled={checkingOut}
-          >
-            {checkingOut ? (
-              <>
-                <span className="spinner-small"></span>
-                កំពុងដំណើរការ...
-              </>
-            ) : (
-              "💳 ដាក់កម្មង់ទិញ (Checkout)"
-            )}
-          </button>
         </>
       )}
     </div>
