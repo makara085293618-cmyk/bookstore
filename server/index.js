@@ -71,7 +71,6 @@ app.post("/api/auth/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // ពិនិត្យថាអ៊ីមែលមានរួចហើយ
     const existingUser = await pool.query(
       "SELECT * FROM users WHERE email = $1",
       [email]
@@ -80,7 +79,6 @@ app.post("/api/auth/register", async (req, res) => {
       return res.status(400).json({ error: "Email already registered" });
     }
 
-    // បំប្លែងពាក្យសម្ងាត់
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = await pool.query(
@@ -88,7 +86,6 @@ app.post("/api/auth/register", async (req, res) => {
       [name, email, hashedPassword]
     );
 
-    // បង្កើត Token
     const token = jwt.sign(
       { id: newUser.rows[0].id, email: newUser.rows[0].email },
       JWT_SECRET,
@@ -118,14 +115,12 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    // ពិនិត្យពាក្យសម្ងាត់
     const validPassword = await bcrypt.compare(password, user.rows[0].password);
 
     if (!validPassword) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    // បង្កើត Token
     const token = jwt.sign(
       { id: user.rows[0].id, email: user.rows[0].email },
       JWT_SECRET,
@@ -170,13 +165,11 @@ app.get("/api/auth/me", authenticateToken, async (req, res) => {
 // 🛒 ប្រព័ន្ធកន្ត្រក (Cart)
 // ============================================
 
-// 1. បន្ថែមសៀវភៅទៅកន្ត្រក (ត្រូវការ Token)
 app.post("/api/cart", authenticateToken, async (req, res) => {
   try {
     const { book_id, quantity = 1 } = req.body;
     const user_id = req.user.id;
 
-    // ពិនិត្យមើលថាសៀវភៅមានមែនទេ
     const book = await pool.query("SELECT * FROM books WHERE id = $1", [
       book_id,
     ]);
@@ -184,12 +177,10 @@ app.post("/api/cart", authenticateToken, async (req, res) => {
       return res.status(404).json({ error: "Book not found" });
     }
 
-    // ពិនិត្យមើល Stock
     if (book.rows[0].stock < quantity) {
       return res.status(400).json({ error: "Not enough stock available" });
     }
 
-    // បន្ថែមទៅកន្ត្រក (UPSERT)
     const result = await pool.query(
       `INSERT INTO cart (user_id, book_id, quantity) 
        VALUES ($1, $2, $3) 
@@ -209,7 +200,6 @@ app.post("/api/cart", authenticateToken, async (req, res) => {
   }
 });
 
-// 2. មើលកន្ត្រករបស់ខ្ញុំ (ត្រូវការ Token)
 app.get("/api/cart", authenticateToken, async (req, res) => {
   try {
     const user_id = req.user.id;
@@ -224,7 +214,6 @@ app.get("/api/cart", authenticateToken, async (req, res) => {
       [user_id]
     );
 
-    // គណនាតម្លៃសរុប
     const total = result.rows.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0
@@ -246,7 +235,6 @@ app.get("/api/cart", authenticateToken, async (req, res) => {
   }
 });
 
-// 3. ធ្វើបច្ចុប្បន្នភាពបរិមាណ (ត្រូវការ Token)
 app.put("/api/cart/:book_id", authenticateToken, async (req, res) => {
   try {
     const { book_id } = req.params;
@@ -257,7 +245,6 @@ app.put("/api/cart/:book_id", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "Quantity must be at least 1" });
     }
 
-    // ពិនិត្យមើល Stock
     const book = await pool.query("SELECT stock FROM books WHERE id = $1", [
       book_id,
     ]);
@@ -287,7 +274,6 @@ app.put("/api/cart/:book_id", authenticateToken, async (req, res) => {
   }
 });
 
-// 4. លុបសៀវភៅចេញពីកន្ត្រក (ត្រូវការ Token)
 app.delete("/api/cart/:book_id", authenticateToken, async (req, res) => {
   try {
     const { book_id } = req.params;
@@ -312,7 +298,6 @@ app.delete("/api/cart/:book_id", authenticateToken, async (req, res) => {
   }
 });
 
-// 5. លុបកន្ត្រកទាំងមូល (ត្រូវការ Token)
 app.delete("/api/cart", authenticateToken, async (req, res) => {
   try {
     const user_id = req.user.id;
@@ -340,7 +325,6 @@ app.post("/api/create-payment-intent", authenticateToken, async (req, res) => {
   try {
     const user_id = req.user.id;
 
-    // យក Cart Items
     const cartItems = await pool.query(
       `SELECT c.book_id, c.quantity, b.price, b.title
        FROM cart c
@@ -353,14 +337,12 @@ app.post("/api/create-payment-intent", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "Cart is empty" });
     }
 
-    // គណនាតម្លៃសរុប (គិតជា Cent)
     const totalAmount = cartItems.rows.reduce(
       (sum, item) => sum + parseFloat(item.price) * item.quantity,
       0
     );
     const amountInCents = Math.round(totalAmount * 100);
 
-    // បង្កើត Payment Intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
       currency: "usd",
@@ -388,7 +370,7 @@ app.post("/api/create-payment-intent", authenticateToken, async (req, res) => {
 });
 
 // ============================================
-// 💳 Stripe Webhook (ស្រេចចិត្ត)
+// 💳 Stripe Webhook
 // ============================================
 
 app.post(
@@ -419,17 +401,18 @@ app.post(
           0
         );
 
+        // 🔥 កែ total_amount ទៅ total
         const order = await pool.query(
-          `INSERT INTO orders (user_id, total_amount, payment_method, payment_status, status) 
-         VALUES ($1, $2, 'stripe', 'paid', 'completed') 
-         RETURNING *`,
+          `INSERT INTO orders (user_id, total, payment_method, payment_status, status) 
+           VALUES ($1, $2, 'stripe', 'paid', 'completed') 
+           RETURNING *`,
           [user_id, totalAmount]
         );
 
         for (const item of items) {
           await pool.query(
             `INSERT INTO order_items (order_id, book_id, quantity, price) 
-           VALUES ($1, $2, $3, $4)`,
+             VALUES ($1, $2, $3, $4)`,
             [order.rows[0].id, item.book_id, item.quantity, item.price]
           );
 
@@ -453,27 +436,28 @@ app.post(
   }
 );
 
-// API សម្រាប់បង្កើត Order
-// API សម្រាប់បង្កើត Order (ត្រូវការ Token)
+// ============================================
+// 📦 Orders Routes (កែប្រែ)
+// ============================================
+
+// បង្កើត Order
 app.post("/api/orders", authenticateToken, async (req, res) => {
   try {
     const user_id = req.user.id;
     const { total_amount, items } = req.body;
 
-    // ពិនិត្យមើលថាមានទិន្នន័យ
     if (!total_amount || !items || items.length === 0) {
       return res.status(400).json({ error: "Invalid order data" });
     }
 
-    // បង្កើត Order
+    // 🔥 កែ total_amount ទៅ total
     const newOrder = await pool.query(
-      `INSERT INTO orders (user_id, total_amount, status) 
+      `INSERT INTO orders (user_id, total, status) 
        VALUES ($1, $2, 'pending') 
-       RETURNING *`,
+       RETURNING id, user_id, total as total_amount, status, created_at`,
       [user_id, total_amount]
     );
 
-    // បន្ថែម Order Items
     for (const item of items) {
       await pool.query(
         `INSERT INTO order_items (order_id, book_id, quantity, price) 
@@ -481,14 +465,12 @@ app.post("/api/orders", authenticateToken, async (req, res) => {
         [newOrder.rows[0].id, item.book_id, item.quantity, item.price]
       );
 
-      // បន្ថយ Stock
       await pool.query(`UPDATE books SET stock = stock - $1 WHERE id = $2`, [
         item.quantity,
         item.book_id,
       ]);
     }
 
-    // លុប Cart
     await pool.query("DELETE FROM cart WHERE user_id = $1", [user_id]);
 
     res.json({
@@ -496,22 +478,23 @@ app.post("/api/orders", authenticateToken, async (req, res) => {
       order: newOrder.rows[0],
     });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: "Server Error" });
+    console.error("Order Error:", err.message);
+    res.status(500).json({ error: "Server Error: " + err.message });
   }
 });
 
-// មើល Orders របស់ខ្ញុំ (ត្រូវការ Token)
+// មើល Orders
 app.get("/api/orders", authenticateToken, async (req, res) => {
   try {
     const user_id = req.user.id;
 
+    // 🔥 កែ total ទៅ total_amount
     const orders = await pool.query(
-      `SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC`,
+      `SELECT id, user_id, total as total_amount, status, created_at 
+       FROM orders WHERE user_id = $1 ORDER BY created_at DESC`,
       [user_id]
     );
 
-    // យក Order Items នីមួយៗ
     for (const order of orders.rows) {
       const items = await pool.query(
         `SELECT oi.*, b.title, b.image_url 
@@ -530,14 +513,16 @@ app.get("/api/orders", authenticateToken, async (req, res) => {
   }
 });
 
-// មើល Order មួយ (ត្រូវការ Token)
+// មើល Order មួយ
 app.get("/api/orders/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const user_id = req.user.id;
 
+    // 🔥 កែ total ទៅ total_amount
     const order = await pool.query(
-      `SELECT * FROM orders WHERE id = $1 AND user_id = $2`,
+      `SELECT id, user_id, total as total_amount, status, created_at 
+       FROM orders WHERE id = $1 AND user_id = $2`,
       [id, user_id]
     );
 
@@ -560,11 +545,11 @@ app.get("/api/orders/:id", authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Server Error" });
   }
 });
+
 // ============================================
 // បន្ថែម API ថ្មីសម្រាប់ Update រូបភាព
 // ============================================
 
-// 1. API សម្រាប់ Update រូបភាពសៀវភៅតាម ID
 app.put("/api/books/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -599,7 +584,6 @@ app.put("/api/books/:id", async (req, res) => {
   }
 });
 
-// 2. API សម្រាប់បន្ថែមរូបភាពឲ្យសៀវភៅជាភាសាខ្មែរ
 app.post("/api/books/update-images", async (req, res) => {
   try {
     const khmerBooksImages = [
