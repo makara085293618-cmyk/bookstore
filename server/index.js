@@ -165,6 +165,172 @@ app.get("/api/auth/me", authenticateToken, async (req, res) => {
   }
 });
 
+// ============================================
+// 🛒 ប្រព័ន្ធកន្ត្រក (Cart)
+// ============================================
+
+// 1. បន្ថែមសៀវភៅទៅកន្ត្រក (ត្រូវការ Token)
+app.post("/api/cart", authenticateToken, async (req, res) => {
+  try {
+    const { book_id, quantity = 1 } = req.body;
+    const user_id = req.user.id;
+
+    // ពិនិត្យមើលថាសៀវភៅមានមែនទេ
+    const book = await pool.query("SELECT * FROM books WHERE id = $1", [
+      book_id,
+    ]);
+    if (book.rows.length === 0) {
+      return res.status(404).json({ error: "Book not found" });
+    }
+
+    // ពិនិត្យមើល Stock
+    if (book.rows[0].stock < quantity) {
+      return res.status(400).json({ error: "Not enough stock available" });
+    }
+
+    // បន្ថែមទៅកន្ត្រក (UPSERT)
+    const result = await pool.query(
+      `INSERT INTO cart (user_id, book_id, quantity) 
+       VALUES ($1, $2, $3) 
+       ON CONFLICT (user_id, book_id) 
+       DO UPDATE SET quantity = cart.quantity + $3 
+       RETURNING *`,
+      [user_id, book_id, quantity]
+    );
+
+    res.json({
+      message: "Book added to cart successfully",
+      cart: result.rows[0],
+    });
+  } catch (err) {
+    console.error("Error adding to cart:", err.message);
+    res.status(500).json({ error: "Server Error" });
+  }
+});
+
+// 2. មើលកន្ត្រករបស់ខ្ញុំ (ត្រូវការ Token)
+app.get("/api/cart", authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user.id;
+
+    const result = await pool.query(
+      `SELECT c.id, c.quantity, c.created_at,
+              b.id as book_id, b.title, b.author, b.price, b.image_url, b.stock
+       FROM cart c
+       JOIN books b ON c.book_id = b.id
+       WHERE c.user_id = $1
+       ORDER BY c.created_at DESC`,
+      [user_id]
+    );
+
+    // គណនាតម្លៃសរុប
+    const total = result.rows.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+    const totalItems = result.rows.reduce(
+      (sum, item) => sum + item.quantity,
+      0
+    );
+
+    res.json({
+      items: result.rows,
+      total: parseFloat(total.toFixed(2)),
+      totalItems: totalItems,
+      count: result.rows.length,
+    });
+  } catch (err) {
+    console.error("Error getting cart:", err.message);
+    res.status(500).json({ error: "Server Error" });
+  }
+});
+
+// 3. ធ្វើបច្ចុប្បន្នភាពបរិមាណ (ត្រូវការ Token)
+app.put("/api/cart/:book_id", authenticateToken, async (req, res) => {
+  try {
+    const { book_id } = req.params;
+    const { quantity } = req.body;
+    const user_id = req.user.id;
+
+    if (quantity < 1) {
+      return res.status(400).json({ error: "Quantity must be at least 1" });
+    }
+
+    // ពិនិត្យមើល Stock
+    const book = await pool.query("SELECT stock FROM books WHERE id = $1", [
+      book_id,
+    ]);
+    if (book.rows.length === 0) {
+      return res.status(404).json({ error: "Book not found" });
+    }
+    if (book.rows[0].stock < quantity) {
+      return res.status(400).json({ error: "Not enough stock available" });
+    }
+
+    const result = await pool.query(
+      "UPDATE cart SET quantity = $1 WHERE user_id = $2 AND book_id = $3 RETURNING *",
+      [quantity, user_id, book_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Item not found in cart" });
+    }
+
+    res.json({
+      message: "Cart updated successfully",
+      cart: result.rows[0],
+    });
+  } catch (err) {
+    console.error("Error updating cart:", err.message);
+    res.status(500).json({ error: "Server Error" });
+  }
+});
+
+// 4. លុបសៀវភៅចេញពីកន្ត្រក (ត្រូវការ Token)
+app.delete("/api/cart/:book_id", authenticateToken, async (req, res) => {
+  try {
+    const { book_id } = req.params;
+    const user_id = req.user.id;
+
+    const result = await pool.query(
+      "DELETE FROM cart WHERE user_id = $1 AND book_id = $2 RETURNING *",
+      [user_id, book_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Item not found in cart" });
+    }
+
+    res.json({
+      message: "Book removed from cart successfully",
+      removed: result.rows[0],
+    });
+  } catch (err) {
+    console.error("Error removing from cart:", err.message);
+    res.status(500).json({ error: "Server Error" });
+  }
+});
+
+// 5. លុបកន្ត្រកទាំងមូល (ត្រូវការ Token)
+app.delete("/api/cart", authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user.id;
+
+    const result = await pool.query(
+      "DELETE FROM cart WHERE user_id = $1 RETURNING *",
+      [user_id]
+    );
+
+    res.json({
+      message: "Cart cleared successfully",
+      removedCount: result.rows.length,
+    });
+  } catch (err) {
+    console.error("Error clearing cart:", err.message);
+    res.status(500).json({ error: "Server Error" });
+  }
+});
+
 // API សម្រាប់បង្កើត Order
 app.post("/api/orders", async (req, res) => {
   try {
