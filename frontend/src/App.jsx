@@ -10,6 +10,7 @@ import Cart from "./pages/Cart";
 import Orders from "./pages/Orders";
 import Admin from "./pages/Admin";
 import "./App.css";
+import Checkout from "./pages/Checkout";
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
               <Route path="/cart/" element={<Cart />} /> {/* បន្ថែមនេះ */}
               <Route path="/orders" element={<Orders />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/checkout" element={<Checkout />} />
             </Routes>
           </main>
         </BrowserRouter>

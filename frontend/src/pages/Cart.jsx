@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
-import { checkout } from "../api/client";
 
 export default function Cart() {
   const {
@@ -16,7 +15,6 @@ export default function Cart() {
   } = useCart();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [checkingOut, setCheckingOut] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
@@ -62,21 +60,14 @@ export default function Cart() {
     }
   };
 
-  // 💳 មុខងារ Checkout
-  async function handleCheckout() {
-    setError("");
-    setCheckingOut(true);
-    try {
-      const order = await checkout();
-      await refreshCart();
-      navigate("/orders");
-      alert(`បានកម្មង់ទិញជោគជ័យ! លេខកម្មង់ #${order.id} សរុប $${order.total}`);
-    } catch (err) {
-      setError(err.message || "Checkout failed");
-    } finally {
-      setCheckingOut(false);
+  // 💳 ប្ដូរទៅ Checkout Page (Stripe)
+  const handleCheckout = () => {
+    if (items.length === 0) {
+      setError("កន្ត្រករបស់អ្នកទទេ");
+      return;
     }
-  }
+    navigate("/checkout"); // 👈 ប្ដូរទៅ Stripe Checkout
+  };
 
   // 🔒 ប្រសិនបើមិនទាន់ Login
   if (!user) {
@@ -168,9 +159,8 @@ export default function Cart() {
                 <div className="item-quantity">
                   <button
                     className="qty-btn"
-                    onClick={
-                      () =>
-                        handleChangeQuantity(item.book_id, item.quantity - 1) // 👈 ប្រើ book_id
+                    onClick={() =>
+                      handleChangeQuantity(item.book_id, item.quantity - 1)
                     }
                     disabled={item.quantity <= 1}
                   >
@@ -179,9 +169,8 @@ export default function Cart() {
                   <span className="qty-number">{item.quantity}</span>
                   <button
                     className="qty-btn"
-                    onClick={
-                      () =>
-                        handleChangeQuantity(item.book_id, item.quantity + 1) // 👈 ប្រើ book_id
+                    onClick={() =>
+                      handleChangeQuantity(item.book_id, item.quantity + 1)
                     }
                     disabled={item.quantity >= (item.stock || 999)}
                   >
@@ -190,7 +179,7 @@ export default function Cart() {
                 </div>
                 <button
                   className="btn btn-danger"
-                  onClick={() => handleRemove(item.book_id)} // 👈 ប្រើ book_id
+                  onClick={() => handleRemove(item.book_id)}
                 >
                   🗑️ យកចេញ
                 </button>
@@ -214,16 +203,9 @@ export default function Cart() {
               <button
                 className="btn btn-success"
                 onClick={handleCheckout}
-                disabled={checkingOut}
+                disabled={items.length === 0}
               >
-                {checkingOut ? (
-                  <>
-                    <span className="spinner-small"></span>
-                    កំពុងដំណើរការ...
-                  </>
-                ) : (
-                  "💳 ដាក់កម្មង់ទិញ"
-                )}
+                💳 បន្តទៅទូទាត់
               </button>
               <button className="btn btn-danger" onClick={handleClearCart}>
                 🗑️ លុបកន្ត្រកទាំងមូល
