@@ -1,69 +1,210 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useCart } from '../context/CartContext';
-import { checkout } from '../api/client';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
+import { checkout } from "../api/client";
 
 export default function Cart() {
-  const { items, total, refreshCart, changeQuantity, removeFromCart } = useCart();
+  const { items, total, refreshCart, changeQuantity, removeFromCart } =
+    useCart();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
-    refreshCart().finally(() => setLoading(false));
-  }, []);
+    if (user) {
+      refreshCart().finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
 
+  // មុខងារលុបជាមួយការពិនិត្យ
+  const handleRemove = async itemId => {
+    setError("");
+    try {
+      await removeFromCart(itemId);
+      await refreshCart();
+    } catch (err) {
+      setError(err.message || "Failed to remove item");
+    }
+  };
+
+  // មុខងារធ្វើបច្ចុប្បន្នភាពបរិមាណ
+  const handleChangeQuantity = async (itemId, newQuantity) => {
+    setError("");
+    try {
+      await changeQuantity(itemId, newQuantity);
+      await refreshCart();
+    } catch (err) {
+      setError(err.message || "Failed to update quantity");
+    }
+  };
+
+  // មុខងារ Checkout
   async function handleCheckout() {
-    setError('');
+    setError("");
     setCheckingOut(true);
     try {
       const order = await checkout();
       await refreshCart();
-      navigate('/orders');
+      navigate("/orders");
       alert(`បានកម្មង់ទិញជោគជ័យ! លេខកម្មង់ #${order.id} សរុប $${order.total}`);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Checkout failed");
     } finally {
       setCheckingOut(false);
     }
   }
 
-  if (loading) return <div className="container"><p>កំពុងផ្ទុក...</p></div>;
+  // ប្រសិនបើមិនទាន់ Login
+  if (!user) {
+    return (
+      <div className="container">
+        <div className="card text-center" style={{ padding: "40px" }}>
+          <h2>🔒 សូមចូលប្រើប្រាស់</h2>
+          <p>សូមចូលប្រើប្រាស់ដើម្បីមើលកន្ត្រករបស់អ្នក</p>
+          <div
+            style={{
+              display: "flex",
+              gap: "15px",
+              justifyContent: "center",
+              marginTop: "20px",
+              flexWrap: "wrap",
+            }}
+          >
+            <button
+              className="btn btn-primary"
+              onClick={() => navigate("/login")}
+            >
+              ចូលប្រើប្រាស់
+            </button>
+            <button
+              className="btn btn-outline"
+              onClick={() => navigate("/register")}
+            >
+              ចុះឈ្មោះ
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading State
+  if (loading) {
+    return (
+      <div className="container">
+        <div className="loading-state">
+          <div className="spinner"></div>
+          <p>កំពុងផ្ទុកកន្ត្រក...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container">
-      <h1 className="page-title">កន្ត្រករបស់ខ្ញុំ</h1>
+      <h1 className="page-title">🛒 កន្ត្រករបស់ខ្ញុំ</h1>
 
-      {error && <div className="error-msg">{error}</div>}
+      {error && <div className="error-msg">⚠️ {error}</div>}
 
       {items.length === 0 ? (
-        <div className="empty-state">កន្ត្រករបស់អ្នកទទេនៅឡើយ 📭</div>
+        <div className="empty-state">
+          <p style={{ fontSize: "20px" }}>📭 កន្ត្រករបស់អ្នកទទេនៅឡើយ</p>
+          <button
+            className="btn btn-primary"
+            onClick={() => navigate("/")}
+            style={{ marginTop: "15px" }}
+          >
+            ត្រឡប់ទៅទិញសៀវភៅ
+          </button>
+        </div>
       ) : (
         <>
-          {items.map((item) => (
-            <div key={item.id} className="cart-row">
-              <img src={item.image_url} alt={item.title} />
-              <div className="info">
-                <div style={{ fontWeight: 'bold' }}>{item.title}</div>
-                <div style={{ color: 'var(--ink-soft)' }}>${Number(item.price).toFixed(2)}</div>
+          {/* Cart Items */}
+          <div className="cart-items">
+            {items.map(item => (
+              <div key={item.id} className="cart-item">
+                <img
+                  src={
+                    item.image_url ||
+                    "https://via.placeholder.com/80x80?text=No+Image"
+                  }
+                  alt={item.title}
+                  onError={e => {
+                    e.target.src =
+                      "https://via.placeholder.com/80x80?text=No+Image";
+                  }}
+                />
+                <div className="item-info">
+                  <div className="item-title">{item.title}</div>
+                  <div className="item-author">{item.author || "Unknown"}</div>
+                  <div className="item-price">
+                    ${Number(item.price).toFixed(2)}
+                  </div>
+                </div>
+                <div className="item-quantity">
+                  <button
+                    className="qty-btn"
+                    onClick={() =>
+                      handleChangeQuantity(item.id, item.quantity - 1)
+                    }
+                    disabled={item.quantity <= 1}
+                  >
+                    −
+                  </button>
+                  <span className="qty-number">{item.quantity}</span>
+                  <button
+                    className="qty-btn"
+                    onClick={() =>
+                      handleChangeQuantity(item.id, item.quantity + 1)
+                    }
+                    disabled={item.quantity >= (item.stock || 999)}
+                  >
+                    +
+                  </button>
+                </div>
+                <button
+                  className="btn btn-danger"
+                  onClick={() => handleRemove(item.id)}
+                >
+                  🗑️ យកចេញ
+                </button>
               </div>
-              <div className="qty-controls">
-                <button onClick={() => changeQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1}>-</button>
-                <span>{item.quantity}</span>
-                <button onClick={() => changeQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= item.stock}>+</button>
-              </div>
-              <button className="btn btn-outline" onClick={() => removeFromCart(item.id)}>យកចេញ</button>
-            </div>
-          ))}
-
-          <div className="cart-total">
-            <span>សរុប</span>
-            <span>${Number(total).toFixed(2)}</span>
+            ))}
           </div>
 
-          <button className="btn" style={{ marginTop: '1.5rem', width: '100%' }} onClick={handleCheckout} disabled={checkingOut}>
-            {checkingOut ? 'កំពុងដំណើរការ...' : 'ដាក់កម្មង់ទិញ (Checkout)'}
+          {/* Cart Total */}
+          <div className="cart-total">
+            <div className="total-row">
+              <span>សរុបចំនួន:</span>
+              <span>
+                {items.reduce((sum, item) => sum + item.quantity, 0)} ក្បាល
+              </span>
+            </div>
+            <div className="total-row total-amount-row">
+              <span>តម្លៃសរុប:</span>
+              <span className="total-amount">${Number(total).toFixed(2)}</span>
+            </div>
+          </div>
+
+          {/* Checkout Button */}
+          <button
+            className="btn btn-success btn-block checkout-btn"
+            onClick={handleCheckout}
+            disabled={checkingOut}
+          >
+            {checkingOut ? (
+              <>
+                <span className="spinner-small"></span>
+                កំពុងដំណើរការ...
+              </>
+            ) : (
+              "💳 ដាក់កម្មង់ទិញ (Checkout)"
+            )}
           </button>
         </>
       )}
