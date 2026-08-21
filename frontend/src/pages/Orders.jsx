@@ -50,10 +50,13 @@ export default function Orders() {
 
   // ចុចលើ order មួយ -> ទាញយកព័ត៌មានលម្អិត
   async function toggleExpand(orderId) {
+    console.log("🔄 Toggling order:", orderId);
     if (expandedId === orderId) {
+      console.log("🔽 Closing order:", orderId);
       setExpandedId(null);
       return;
     }
+    console.log("🔼 Opening order:", orderId);
     setExpandedId(orderId);
     if (!details[orderId]) {
       try {
