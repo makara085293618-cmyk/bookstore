@@ -5,12 +5,12 @@ require('dotenv').config();
 
 const app = express();
 
-// កំណត់ CORS ឱ្យច្បាស់លាស់ដើម្បីបំបាត់ Error CORS policy
+// កំណត់ CORS
 app.use(cors({
   origin: [
     'http://localhost:5173', 
     'https://bookstore-frontend-tau-khaki.vercel.app', 
-    'https://main.d1cfahortjyjeh.amplifyapp.com' // ប្ដូរឲ្យត្រូវ
+    'https://main.d1cfahortjyjeh.amplifyapp.com'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -30,7 +30,7 @@ app.get('/api', (req, res) => {
   res.json({ message: 'Bookstore API is running successfully!' });
 });
 
-// API យកបញ្ជីសៀវភៅទាំងអស់ពី Database
+// API យកបញ្ជីសៀវភៅទាំងអស់
 app.get('/api/books', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM books');
@@ -41,7 +41,7 @@ app.get('/api/books', async (req, res) => {
   }
 });
 
-// ---------- Auth Routes (បន្ថែមថ្មីដើម្បីដោះស្រាយ Error 404 ពេល Register/Login) ----------
+// ---------- Auth Routes ----------
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -78,7 +78,7 @@ app.get('/api/auth/me', async (req, res) => {
   }
 });
 
-// API សម្រាប់បង្កើត Order (Checkout)
+// API សម្រាប់បង្កើត Order
 app.post('/api/orders', async (req, res) => {
   try {
     const { user_id, total_amount } = req.body;
@@ -89,6 +89,96 @@ app.post('/api/orders', async (req, res) => {
     res.json({ message: 'Order created successfully', order: newOrder.rows[0] });
   } catch (err) {
     console.error(err.message);
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+// ============================================
+// បន្ថែម API ថ្មីសម្រាប់ Update រូបភាព
+// ============================================
+
+// 1. API សម្រាប់ Update រូបភាពសៀវភៅតាម ID
+app.put('/api/books/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, author, description, price, stock, category, image_url } = req.body;
+    
+    const result = await pool.query(
+      `UPDATE books 
+       SET title = COALESCE($1, title),
+           author = COALESCE($2, author),
+           description = COALESCE($3, description),
+           price = COALESCE($4, price),
+           stock = COALESCE($5, stock),
+           category = COALESCE($6, category),
+           image_url = COALESCE($7, image_url)
+       WHERE id = $8 
+       RETURNING *`,
+      [title, author, description, price, stock, category, image_url, id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+    
+    res.json({ 
+      message: 'Book updated successfully', 
+      book: result.rows[0] 
+    });
+  } catch (err) {
+    console.error('Error updating book:', err.message);
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+// 2. API សម្រាប់បន្ថែមរូបភាពឲ្យសៀវភៅជាភាសាខ្មែរ
+app.post('/api/books/update-images', async (req, res) => {
+  try {
+    const khmerBooksImages = [
+      {
+        title: 'រឿងព្រេងខ្មែរ',
+        image_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c'
+      },
+      {
+        title: 'វិធីសាស្ត្រសិក្សាទំនើប',
+        image_url: 'https://images.unsplash.com/photo-1512820790803-83ca734da794'
+      },
+      {
+        title: 'កម្មវិធី JavaScript',
+        image_url: 'https://images.unsplash.com/photo-1532012197267-da84d127e765'
+      },
+      {
+        title: 'សេដ្ឋកិច្ចកម្ពុជា',
+        image_url: 'https://images.unsplash.com/photo-1507842217343-583bb7270b66'
+      },
+      {
+        title: 'វប្បធម៌ខ្មែរ',
+        image_url: 'https://images.unsplash.com/photo-1495446815901-a7297e633e8d'
+      }
+    ];
+
+    let updatedCount = 0;
+    const results = [];
+
+    for (const book of khmerBooksImages) {
+      const result = await pool.query(
+        'UPDATE books SET image_url = $1 WHERE title = $2 AND image_url IS NULL RETURNING id, title, image_url',
+        [book.image_url, book.title]
+      );
+      
+      if (result.rows.length > 0) {
+        updatedCount++;
+        results.push(result.rows[0]);
+      }
+    }
+
+    res.json({ 
+      message: `Updated ${updatedCount} books with images`,
+      updated_books: results,
+      total_updated: updatedCount
+    });
+  } catch (err) {
+    console.error('Error updating book images:', err.message);
     res.status(500).json({ error: 'Server Error' });
   }
 });
