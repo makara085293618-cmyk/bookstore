@@ -37,6 +37,43 @@ app.get('/api/books', async (req, res) => {
   }
 });
 
+// ---------- Auth Routes (បន្ថែមថ្មីដើម្បីដោះស្រាយ Error 404 ពេល Register/Login) ----------
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    const newUser = await pool.query(
+      'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email',
+      [name, email, password]
+    );
+    res.json({ message: 'User registered successfully', user: newUser.rows[0] });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Server Error or Email already exists' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await pool.query('SELECT * FROM users WHERE email = $1 AND password = $2', [email, password]);
+    if (user.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+    res.json({ token: 'fake-jwt-token-' + user.rows[0].id, user: user.rows[0] });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+app.get('/api/auth/me', async (req, res) => {
+  try {
+    res.json({ id: 1, name: 'User Test', email: 'test@example.com' });
+  } catch (err) {
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
 // API សម្រាប់បង្កើត Order (Checkout)
 app.post('/api/orders', async (req, res) => {
   try {
