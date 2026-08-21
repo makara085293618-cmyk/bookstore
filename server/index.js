@@ -5,6 +5,7 @@ require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-here";
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 
@@ -330,6 +331,127 @@ app.delete("/api/cart", authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Server Error" });
   }
 });
+
+// ============================================
+// 💳 Stripe Payment Intent
+// ============================================
+
+app.post("/api/create-payment-intent", authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user.id;
+
+    // យក Cart Items
+    const cartItems = await pool.query(
+      `SELECT c.book_id, c.quantity, b.price, b.title
+       FROM cart c
+       JOIN books b ON c.book_id = b.id
+       WHERE c.user_id = $1`,
+      [user_id]
+    );
+
+    if (cartItems.rows.length === 0) {
+      return res.status(400).json({ error: "Cart is empty" });
+    }
+
+    // គណនាតម្លៃសរុប (គិតជា Cent)
+    const totalAmount = cartItems.rows.reduce(
+      (sum, item) => sum + parseFloat(item.price) * item.quantity,
+      0
+    );
+    const amountInCents = Math.round(totalAmount * 100);
+
+    // បង្កើត Payment Intent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amountInCents,
+      currency: "usd",
+      metadata: {
+        user_id: user_id,
+        items: JSON.stringify(
+          cartItems.rows.map(item => ({
+            book_id: item.book_id,
+            quantity: item.quantity,
+            price: parseFloat(item.price),
+          }))
+        ),
+      },
+    });
+
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+      amount: totalAmount,
+      currency: "usd",
+    });
+  } catch (err) {
+    console.error("Payment Intent Error:", err);
+    res.status(500).json({ error: err.message || "Server Error" });
+  }
+});
+
+// ============================================
+// 💳 Stripe Webhook (ស្រេចចិត្ត)
+// ============================================
+
+app.post(
+  "/api/webhook",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const sig = req.headers["stripe-signature"];
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    let event;
+
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } catch (err) {
+      console.error("Webhook signature verification failed:", err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    if (event.type === "payment_intent.succeeded") {
+      const paymentIntent = event.data.object;
+      const metadata = paymentIntent.metadata;
+      const user_id = parseInt(metadata.user_id);
+      const items = JSON.parse(metadata.items);
+
+      try {
+        const totalAmount = items.reduce(
+          (sum, item) => sum + item.price * item.quantity,
+          0
+        );
+
+        const order = await pool.query(
+          `INSERT INTO orders (user_id, total_amount, payment_method, payment_status, status) 
+         VALUES ($1, $2, 'stripe', 'paid', 'completed') 
+         RETURNING *`,
+          [user_id, totalAmount]
+        );
+
+        for (const item of items) {
+          await pool.query(
+            `INSERT INTO order_items (order_id, book_id, quantity, price) 
+           VALUES ($1, $2, $3, $4)`,
+            [order.rows[0].id, item.book_id, item.quantity, item.price]
+          );
+
+          await pool.query(
+            `UPDATE books SET stock = stock - $1 WHERE id = $2`,
+            [item.quantity, item.book_id]
+          );
+        }
+
+        await pool.query("DELETE FROM cart WHERE user_id = $1", [user_id]);
+
+        console.log(
+          `✅ Order ${order.rows[0].id} created successfully for user ${user_id}`
+        );
+      } catch (err) {
+        console.error("Error creating order from webhook:", err);
+      }
+    }
+
+    res.json({ received: true });
+  }
+);
 
 // API សម្រាប់បង្កើត Order
 app.post("/api/orders", async (req, res) => {
