@@ -3,7 +3,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Elements,
-  CardElement,
+  CardNumberElement,
+  CardExpiryElement,
+  CardCvcElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
@@ -11,7 +13,6 @@ import { loadStripe } from "@stripe/stripe-js";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 
-// Stripe Publishable Key (ពី .env)
 const stripePromise = loadStripe(
   "pk_test_51U6t2kEO9V0DjQWGc2c6NqS8BbbTMXdEp1JiT0QxzWV6m59Oi7F9LZOMVSvDVm2Q7ILUqi2QQFxkxzltSznLXZUa008JjQe9Rl"
 );
@@ -25,7 +26,7 @@ function CheckoutForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [clientSecret, setClientSecret] = useState("");
-  const [postalCode, setPostalCode] = useState(""); // 👈 បន្ថែម Postal Code
+  const [postalCode, setPostalCode] = useState("");
 
   useEffect(() => {
     const createPaymentIntent = async () => {
@@ -59,7 +60,6 @@ function CheckoutForm() {
     e.preventDefault();
     if (!stripe || !elements || !clientSecret) return;
 
-    // 👇 ពិនិត្យ Postal Code
     if (!postalCode || postalCode.length < 3) {
       setError("សូមបញ្ចូលលេខកូដប្រៃសណីយ៍");
       return;
@@ -71,10 +71,10 @@ function CheckoutForm() {
     const { error: stripeError, paymentIntent } =
       await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
-          card: elements.getElement(CardElement),
+          card: elements.getElement(CardNumberElement),
           billing_details: {
             address: {
-              postal_code: postalCode, // 👈 បញ្ចូល Postal Code
+              postal_code: postalCode,
             },
           },
         },
@@ -144,24 +144,25 @@ function CheckoutForm() {
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: "20px" }}>
+          {/* Card Number */}
+          <div style={{ marginBottom: "15px" }}>
             <label
               style={{
                 display: "block",
-                marginBottom: "10px",
+                marginBottom: "5px",
                 fontWeight: "600",
               }}
             >
-              ព័ត៌មានកាត (Card Details)
+              លេខកាត (Card Number)
             </label>
             <div
               style={{
-                padding: "15px",
+                padding: "12px",
                 border: "1px solid #ddd",
                 borderRadius: "8px",
               }}
             >
-              <CardElement
+              <CardNumberElement
                 options={{
                   style: {
                     base: {
@@ -176,7 +177,73 @@ function CheckoutForm() {
             </div>
           </div>
 
-          {/* 👇 បន្ថែម Postal Code Input */}
+          {/* Expiry Date */}
+          <div style={{ marginBottom: "15px" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "5px",
+                fontWeight: "600",
+              }}
+            >
+              ថ្ងៃផុតកំណត់ (Expiry Date)
+            </label>
+            <div
+              style={{
+                padding: "12px",
+                border: "1px solid #ddd",
+                borderRadius: "8px",
+              }}
+            >
+              <CardExpiryElement
+                options={{
+                  style: {
+                    base: {
+                      fontSize: "16px",
+                      color: "#424770",
+                      "::placeholder": { color: "#aab7c4" },
+                    },
+                    invalid: { color: "#9e2146" },
+                  },
+                }}
+              />
+            </div>
+          </div>
+
+          {/* CVC */}
+          <div style={{ marginBottom: "20px" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "5px",
+                fontWeight: "600",
+              }}
+            >
+              CVC
+            </label>
+            <div
+              style={{
+                padding: "12px",
+                border: "1px solid #ddd",
+                borderRadius: "8px",
+              }}
+            >
+              <CardCvcElement
+                options={{
+                  style: {
+                    base: {
+                      fontSize: "16px",
+                      color: "#424770",
+                      "::placeholder": { color: "#aab7c4" },
+                    },
+                    invalid: { color: "#9e2146" },
+                  },
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Postal Code */}
           <div style={{ marginBottom: "20px" }}>
             <label
               style={{
